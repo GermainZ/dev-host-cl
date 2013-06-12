@@ -61,7 +61,10 @@ def login(username, password):
 def get_progress(xid):
     """Gets the upload's progress, using the xid."""
     while True:
-        time.sleep(5)
+        # We're getting the progress from the website, so there's a slight
+        # traffic overhead, which is why we're waiting a few seconds between
+        # refreshes.
+        time.sleep(3)
         request = s.get('http://api.d-h.st/progress?X-Progress-ID=%s' % xid)
         resp = request.content.strip()[1:-2]
         progress = json.loads(resp.decode())
