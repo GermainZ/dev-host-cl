@@ -68,7 +68,7 @@ def get_progress(xid):
         progress = json.loads(resp)
         if progress.get('state') == "uploading":
             percentage = progress.get('received') / float(progress.get('size'))
-            print "Progress: %0.2f%%" % percentage
+            print "Progress: %0.2f%%" % (percentage * 100)
         elif progress.get('state') == "starting":
             pass
         else:

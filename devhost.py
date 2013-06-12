@@ -68,7 +68,7 @@ def get_progress(xid):
         if progress.get('state') == "uploading":
             percentage = progress.get('received') / progress.get('size') * 100
             percentage = '{n:.{d}f}'.format(n=percentage, d=2)
-            print("Progress: %s%%" % percentage)
+            print("Progress: %s%%" % percentage, end='\r')
         elif progress.get('state') == "starting":
             pass
         else:
