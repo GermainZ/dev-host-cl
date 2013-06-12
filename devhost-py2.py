@@ -1,11 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 from requests import session
 from lxml import etree
 import os
 import binascii
+from StringIO import StringIO
 import argparse
 import time
-import json # Use json from requests instead?
+import json
 import threading
 import signal
 
@@ -13,7 +14,7 @@ import signal
 def arg_parser():
     """Parses command line arguments, and returns a dict containing them."""
     parser = argparse.ArgumentParser(description='d-h.st (Dev-Host) command line tool')
-    parser.add_argument('my_file', type=argparse.FileType('rb'), metavar='file', help='File to upload')
+    parser.add_argument('my_file', type=file, metavar='file', help='File to upload')
     parser.add_argument('-u', '--username', help='Username')
     parser.add_argument('-p', '--password', help='Password')
     parser.add_argument('-d', '--file-desc', help='Description of file')
@@ -30,11 +31,11 @@ def upload_file(files_data, upload_data, xid):
         url = 'http://api.d-h.st/upload'
     else:
         url = 'http://api.d-h.st/upload?X-Progress-ID=%s' % xid
-    print("STARTING UPLOAD")
+    print "STARTING UPLOAD"
     time.sleep(1)
     r = s.post(url, data=upload_data, files=files_data)
     # Parse the response, format then return it
-    resp = etree.XML(r.content)
+    resp = etree.parse(StringIO(r.content))
     result = []
     for field in resp.xpath("//file_info/*"):
         result.append( "%s: %s" % (field.tag, field.text))
@@ -54,7 +55,7 @@ def login(username, password):
     """Login and return the token, which is used for identification."""
     request = s.get('http://d-h.st/api/user/auth?user=%s&pass=%s' % (username, password))
     content = request.content
-    resp = etree.XML(content)
+    resp = etree.parse(StringIO(content))
     token = resp.xpath('//token/text()')[0]
     return token
 
@@ -64,19 +65,18 @@ def get_progress(xid):
         time.sleep(5)
         request = s.get('http://api.d-h.st/progress?X-Progress-ID=%s' % xid)
         resp = request.content.strip()[1:-2]
-        progress = json.loads(resp.decode())
+        progress = json.loads(resp)
         if progress.get('state') == "uploading":
-            percentage = progress.get('received') / progress.get('size') * 100
-            percentage = '{n:.{d}f}'.format(n=percentage, d=2)
-            print("Progress: %s%%" % percentage)
+            percentage = progress.get('received') / float(progress.get('size'))
+            print "Progress: %0.2f%%" % percentage
         elif progress.get('state') == "starting":
             pass
         else:
-            print(progress.get('state'))
+            print progress.get('state')
 
 def signal_handler(signal, frame):
-    """Handles SIGINT"""
-    print("\nAborted by user")
+    """Handle SIGINT"""
+    print "\nAborted by user"
     exit(0)
 
 
@@ -94,19 +94,18 @@ def upload(args):
     token = None
     xid = None
     if args['username'] is not None and args['password'] is not None:
-        print("Logging in...")
+        print "Logging in..."
         token = login(args['username'], args['password'])
-    print("Uploading...\n")
+    print "Uploading...\n"
     xid = binascii.hexlify(os.urandom(8))
     files_data, upload_data = gen_data(args, xid, token)
     t = threading.Thread(target=get_progress, args=(xid,))
     t.daemon = True
     t.start()
     result = upload_file(files_data, upload_data, xid)
-    print('\n')
     for line in result:
-        print(line)
+        print line
 
-# Upload is the only function of this script right now, but this is likely to
+# upload is the only function of this script right now, but this is likely to
 # change in the future.
 upload(args)

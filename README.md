@@ -1,22 +1,20 @@
 dev-host-cl
 ===========
-
 Upload files to http://d-h.st (Dev-Host) from the command line.
 
 Usage
 =====
-
+* Execute devhost-py2.py if you use Python 2, devhost.py if you use Python 3.
 * Usage: devhost.py [-h] [-u USERNAME] [-p PASSWORD] [-d FILE_DESC]
                     [-c FILE_CODE] [-pb {0,1}] [-f UPLOAD_FOLDER]
                     file
-
 * You can either upload as an Anonymous user or use your credentials to login.
   If no username & password combination is given, the file will be uploaded
   anonymously.
 
 Dependencies
 ============
-* python 2.x (http://python.org/)
+* python 2.x or 3.x (http://python.org/)
 * requests (http://python-requests.org/)
 * lxml (http://lxml.de/)
 
