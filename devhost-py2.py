@@ -1,4 +1,26 @@
 #!/usr/bin/env python2
+
+# dev-host-cl Copyright (c) 2013 by GermainZ <germanosz@gmail.om>
+# Requirements: python2
+#               python2-lxml
+#               python2-requests
+#
+# Dev-Host API documentation
+# http://d-h.st/api
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from __future__ import division
 from requests import session
 from lxml import etree
