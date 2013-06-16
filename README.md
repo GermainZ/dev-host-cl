@@ -6,7 +6,7 @@ your account credentials.
 
 Download
 ========
-You can directly download and place the script in ~/bin to use directly.
+You can download and place the script in ~/bin to use it directly.
 For example:
 
          $ git clone git://github.com/GermainZ/dev-host-cl.git dev-host-cl
