@@ -12,12 +12,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -42,8 +42,8 @@ def arg_parser():
     subparsers = parser.add_subparsers(metavar="ACTION", dest="action",
                                        help="Use %(prog)s ACTION -h for help")
     # Parent parsers
-    # We use a parent parser to get the user's info too so that args can be
-    # too after the actions. For example, this would raise an unknown arg error
+    # We use a parent parser to get the user's info again so that args can be
+    # after the actions too. For example, this would raise an unknown arg error
     # otherwise:
     # devhost.py upload file.txt -u myusername -p mypassword
     parser_u = argparse.ArgumentParser(add_help=False)
@@ -106,8 +106,9 @@ def h_empty(s):
 
 def login(username, password):
     """Login and return the token, which is used for identification."""
-    request = s.get(('http://d-h.st/api/user/auth?user=%s&pass=%s'
-                     % (username, password)))
+    args = {'action': "user/auth", 'user': username, 'pass': password}
+    url = gen_url(args)
+    request = s.get(url)
     content = request.content
     resp = etree.XML(content)
     token = resp.xpath('//token/text()')[0]
@@ -125,7 +126,6 @@ def upload(args, token):
     get_progress as a thread to print the progress from the server.
     """
     xid = None
-    print("Uploading...")
     xid = binascii.hexlify(os.urandom(8))
     files_data, upload_data = gen_data(args, xid, token)
     # Get and print the progress using a daemon thread
@@ -133,9 +133,7 @@ def upload(args, token):
     t.daemon = True
     t.start()
     result = upload_file(files_data, upload_data, xid)
-    print()
-    for line in result:
-        print(line)
+    return result
 
 def gen_data(args, xid, token):
     """Constructs data needed for the HTTP POST request for uploads."""
@@ -150,15 +148,11 @@ def gen_data(args, xid, token):
 def upload_file(files_data, upload_data, xid):
     """Uploads file and returns parsed response."""
     # xid is optional, and can be used to track progress
-    if xid is None:
-        url = 'http://api.d-h.st/upload'
-    else:
-        url = 'http://api.d-h.st/upload?X-Progress-ID=%s' % xid
+    url = 'http://api.d-h.st/upload'
+    if xid is not None:
+        url = '%s?X-Progress-ID=%s' % (url, xid)
     r = s.post(url, data=upload_data, files=files_data)
-    result = []
-    for field in parse_info(r.content):
-        result.append("%s: %s" % (field.tag, field.text))
-    return result
+    return r.content
 
 def get_progress(xid):
     """Prints the upload's progress, using the xid."""
@@ -181,49 +175,52 @@ def get_progress(xid):
 
 def get_file_info(file_code, token):
     """Gets a file's info."""
-    base_url = "http://d-h.st/api/file/getinfo"
-    if token is None:
-        url = "%s?file_code=%s" % (base_url, file_code)
-    else:
-        url = "%s?file_code=%s&token=%s" % (base_url, file_code, token)
+    args = {'action': "file/getinfo", 'token': token, 'file_code': file_code}
+    url = gen_url(args)
     r = s.get(url)
-    for field in parse_info(r.content):
-        print("%s: %s" % (field.tag, field.text))
+    return r.content
 
 def set_file_info(args, token):
     """Sets a file's info."""
-    url = ["http://d-h.st/api/file/setinfo",
-           "?file_code=%s" % args['file-code'], "&token=%s" % token]
-    if args['file_name'] is not None:
-        url.append("&name=%s" % args['file_name'])
-    if args['file_desc'] is not None:
-        url.append("&description=%s" % args['file_desc'])
-    if args['public'] is not None:
-        url.append("&public=%s" % args['public'])
-    if args['folder_id'] is not None:
-        url.append("&folder_id=%s" % args['folder_id'])
-    url = ''.join(url)
+    args = {'action': "file/setinfo", 'token': token, 'file_code':
+            args['file-code'], 'name': args['file_name'], 'description':
+            args['file_desc'], 'public': args['public'], 'folder_id':
+            args['folder_id']}
+    url = gen_url(args)
     r = s.get(url)
-    for field in parse_info(r.content):
-        print("%s: %s" % (field.tag, field.text))
+    return r.content
 
 def delete_file(file_code, token):
     """Deletes file(s)."""
-    url = ''.join(["http://d-h.st/api/file/delete",
-                   "?file_code=%s" % file_code, "&token=%s" % token])
+    args = {'action': "file/delete", 'token': token, 'file_code': file_code}
+    url = gen_url(args)
     r = s.get(url)
-    for field in parse_info(r.content):
-        print("%s: %s" % (field.tag, field.text))
+    return r.content
 
 def move_file(file_code, token, folder_id):
     """Moves file(s)."""
-    url = ''.join(["http://d-h.st/api/file/move",
-                   "?file_code=%s" % file_code, "&token=%s" % token])
-    if folder_id is not None:
-        url = ''.join([url, "&folder_id=%s" % folder_id])
+    args = {'action': "file/move", 'token': token, 'file_code': file_code,
+            'folder_id': folder_id}
+    url = gen_url(args)
     r = s.get(url)
-    for field in parse_info(r.content):
-        print("%s: %s" % (field.tag.capitalize(), field.text))
+    return r.content
+
+def gen_url(args):
+    """Generates a URL using the keys/values of args, and returns it."""
+    url = ["http://d-h.st/api/%s" % args['action']]
+    del args['action']
+    first = True
+    for key, value in args.items():
+        if value is None:
+            continue
+        if first == True:
+            url.append("?")
+            first = False
+        else:
+            url.append("&")
+        url.append("%s=%s" % (key, value))
+    url = ''.join(url)
+    return url
 
 def signal_handler(signal, frame):
     """Handles SIGINT"""
@@ -239,21 +236,26 @@ token = None
 if args['username'] is not None and args['password'] is not None:
     print("Logging in...")
     token = login(args['username'], args['password'])
-    if args['action'] != "upload":
-        print()
 
+print("Starting...\n")
+result = None
 if args['action'] == "upload":
-    upload(args, token)
+    result = upload(args, token)
 elif args['action'] == "file-get-info":
-    get_file_info(args['file-code'], token)
+    result = get_file_info(args['file-code'], token)
 elif args['username'] is None or args['password'] is None:
     print("You must specify your username and password for this action.")
 elif args['action'] == "file-set-info":
-    set_file_info(args, token)
+    result = set_file_info(args, token)
 elif args['action'] == "file-delete":
-    delete_file(args['file-code'], token)
+    result = delete_file(args['file-code'], token)
 elif args['action'] == "file-move":
-    move_file(args['file-code'], token, args['folder_id'])
+    result = move_file(args['file-code'], token, args['folder_id'])
 else:
     print(args['action'])
+
+if result is not None:
+    for field in parse_info(result):
+        print("%s: %s" % (field.tag.capitalize(), field.text))
+
 print()
