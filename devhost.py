@@ -49,8 +49,11 @@ def arg_parser():
     parser_u = argparse.ArgumentParser(add_help=False)
     parser_u.add_argument('-u', "--username", help="Username")
     parser_u.add_argument('-p', "--password", help="Password")
+    # Other parent parsers
     parser_c = argparse.ArgumentParser(add_help=False)
-    parser_c.add_argument("file-code", help="File Code")
+    parser_c.add_argument("file_code", metavar="file-code", help="File Code")
+    parser_fo = argparse.ArgumentParser(add_help=False)
+    parser_fo.add_argument("folder_id", metavar="folder-id", help="Folder ID")
     # Create the parser for the "upload" command
     parser_upload = subparsers.add_parser("upload", parents=[parser_u],
                                           help="Upload file")
@@ -91,15 +94,62 @@ def arg_parser():
     parser_mvf.add_argument('-f', "--folder-id",
                             help=("Use if you want to change the folder."
                             " Specify folder_id or 0 for root directory."))
+    # Create the parser for the "get-folder-info" command
+    parser_getfo = subparsers.add_parser("folder-get-info",
+                                        parents=[parser_fo, parser_u],
+                                        help="Return folder info")
+    # Create the parser for the "set-folder-info" command
+    parser_setfo = subparsers.add_parser("folder-set-info",
+                                        parents=[parser_fo, parser_u],
+                                        help="Set folder info")
+    parser_setfo.add_argument('-n', "--folder-name", help=h_empty("name"))
+    parser_setfo.add_argument('-d', "--folder-desc",
+                             help=h_empty("description"))
+    parser_setfo.add_argument('-f', "--parent-folder-id",
+                             help=("Use to change the parent folder"))
+    # Create the parser for the "folder-delete" command
+    parser_delfo = subparsers.add_parser("folder-delete",
+                                        parents=[parser_fo, parser_u],
+                                        help="Delete folder")
+    # Create the parser for the "folder-move" command
+    parser_mvfo = subparsers.add_parser("folder-move",
+                                       parents=[parser_fo, parser_u],
+                                       help="Move folder")
+    parser_mvfo.add_argument('-f', "--parent-folder-id",
+                            help=("Use if you want to change the folder."
+                            " Specify folder_id or 0 for root directory."))
+    # Create the parser for the "folder-create" command
+    parser_cfo = subparsers.add_parser("folder-create",
+                                       parents=[parser_u],
+                                       help="Create folder")
+    parser_cfo.add_argument("folder_name", metavar="folder-name",
+                            help="Folder name")
+    parser_cfo.add_argument('-d', "--folder-desc",
+                             help="Folder description")
+    parser_cfo.add_argument('-f', "--parent-folder-id",
+                             help="Create folder inside this one")
+    # Create the parser for the "folder-content" command
+    parser_confo = subparsers.add_parser("folder-content",
+                                         parents=[parser_fo, parser_u],
+                                         help="Get folder content")
+    parser_confo.add_argument("--user", help=("Username of the person you"
+                                              "want to retrive the folder"
+                                              "content for"))
+    parser_confo.add_argument("--user-id", help=("User id of the person you"
+                                                 "want to retrive the folder"
+                                                 "content for"))
+    # TODO: merge some of the duplicate items into a parent parser
+    # TODO: help text needs more info
     # Parse the args and return them as a dict
     args = parser.parse_args()
     if args.action is None:
         parser.print_help()
+        exit(0)
     return vars(args)
 
 def h_empty(s):
     """Substitute keyword and returns repetitive help message for arg parser"""
-    s = ("Use to change the file's %s. Choosing an empty value \"\" will"
+    s = ("Use to change the %s. Choosing an empty value \"\" will"
          " clear the data.") % s
     return s
 
@@ -109,8 +159,7 @@ def login(username, password):
     args = {'action': "user/auth", 'user': username, 'pass': password}
     url = gen_url(args)
     request = s.get(url)
-    content = request.content
-    resp = etree.XML(content)
+    resp = etree.XML(request.content)
     token = resp.xpath('//token/text()')[0]
     return token
 
@@ -183,7 +232,7 @@ def get_file_info(file_code, token):
 def set_file_info(args, token):
     """Sets a file's info."""
     args = {'action': "file/setinfo", 'token': token, 'file_code':
-            args['file-code'], 'name': args['file_name'], 'description':
+            args['file_code'], 'name': args['file_name'], 'description':
             args['file_desc'], 'public': args['public'], 'folder_id':
             args['folder_id']}
     url = gen_url(args)
@@ -197,10 +246,60 @@ def delete_file(file_code, token):
     r = s.get(url)
     return r.content
 
-def move_file(file_code, token, folder_id):
+def move_file(args, token):
     """Moves file(s)."""
-    args = {'action': "file/move", 'token': token, 'file_code': file_code,
-            'folder_id': folder_id}
+    args = {'action': "file/move", 'token': token, file_code:
+            args['file_code'], 'folder_id': args['folder_id']}
+    url = gen_url(args)
+    r = s.get(url)
+    return r.content
+
+def get_folder_info(folder_id, token):
+    """Gets folder info."""
+    args = {'action': "folder/getinfo", 'token': token, 'folder_id': folder_id}
+    url = gen_url(args)
+    r = s.get(url)
+    return r.content
+
+def set_folder_info(args, token):
+    """Sets folder info."""
+    args = {'acion': "folder/setinfo", 'token': token, 'folder_id':
+            args['folder_id'], 'name': args['folder_name'], 'description':
+            args['folder_desc'], 'parent_folder_id': args['parent_folder_id']}
+    url = gen_url(args)
+    r = s.get(url)
+    return r.content
+
+def delete_folder(folder_id, token):
+    """Deletes folder(s)."""
+    args = {'action': "folder/delete", 'token': token, 'folder_id': folder_id}
+    url = gen_url(args)
+    r = s.get(url)
+    return r.content
+
+def move_folder(args, token):
+    """Moves folder(s)."""
+    args = {'action': "folder/move", 'token': token,
+            'parent_folder_id': args['parent_folder_id']}
+    url = gen_url(args)
+    r = s.get(url)
+    return r.content
+
+def create_folder(args, token):
+    """Creates a new folder."""
+    args = {'action': "folder/create", 'token': token, 'name':
+            args['folder_name'], 'description': args['folder_desc'],
+            'parent_folder_id': args['parent_folder_id']}
+    url = gen_url(args)
+    r = s.get(url)
+    return r.content
+
+def folder_content(args, token):
+    """Returns info on a folder, including its immediate subfolders and
+    files."""
+    args = {'action': "folder/content", 'token': token, 'folder_id':
+            args['folder_id'], 'user': args['user'], 'user_id':
+            args['user_id']}
     url = gen_url(args)
     r = s.get(url)
     return r.content
@@ -242,17 +341,29 @@ result = None
 if args['action'] == "upload":
     result = upload(args, token)
 elif args['action'] == "file-get-info":
-    result = get_file_info(args['file-code'], token)
+    result = get_file_info(args['file_code'], token)
 elif args['username'] is None or args['password'] is None:
     print("You must specify your username and password for this action.")
 elif args['action'] == "file-set-info":
     result = set_file_info(args, token)
 elif args['action'] == "file-delete":
-    result = delete_file(args['file-code'], token)
+    result = delete_file(args['file_code'], token)
 elif args['action'] == "file-move":
-    result = move_file(args['file-code'], token, args['folder_id'])
+    result = move_file(args, token)
+elif args['action'] == "folder-get-info":
+    result = get_folder_info(args['folder_id'], token)
+elif args['action'] == "folder-set-info":
+    result = set_folder_info(args, token)
+elif args['action'] == "folder-delete":
+    result = delete_folder(args['folder_id'], token)
+elif args['action'] == "folder-move":
+    result = move_folder(args, token)
+elif args['action'] == "folder-create":
+    result = create_folder(args, token)
+elif args['action'] == "folder-content":
+    result = folder_content(args, token)
 else:
-    print(args['action'])
+    print("Action %s not recognized" % args['action'])
 
 if result is not None:
     for field in parse_info(result):
