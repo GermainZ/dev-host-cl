@@ -51,8 +51,11 @@ def arg_parser():
     parser_u = argparse.ArgumentParser(add_help=False)
     parser_u.add_argument('-u', "--username", help="Username")
     parser_u.add_argument('-p', "--password", help="Password")
+    # Other parent parsers
     parser_c = argparse.ArgumentParser(add_help=False)
-    parser_c.add_argument("file-code", help="File Code")
+    parser_c.add_argument("file_code", metavar="file-code", help="File Code")
+    parser_fo = argparse.ArgumentParser(add_help=False)
+    parser_fo.add_argument("folder_id", metavar="folder-id", help="Folder ID")
     # Create the parser for the "upload" command
     parser_upload = subparsers.add_parser("upload", parents=[parser_u],
                                           help="Upload file")
@@ -64,7 +67,8 @@ def arg_parser():
     parser_upload.add_argument('-pb', "--public", choices=['0', '1'],
                                default='0', help=("File is public or private,"
                                " 0 - private, 1 - public"))
-    parser_upload.add_argument('-f', "--upload-folder", default='0',
+    parser_upload.add_argument('-f', "--upload-folder", dest="uploadfolder",
+                               default='0',
                                help=("Folder id to upload file to. The root"
                                      " folder is chosen by default"))
     # Create the parser for the "get-file-info" command
@@ -75,8 +79,10 @@ def arg_parser():
     parser_setf = subparsers.add_parser("file-set-info",
                                         parents=[parser_c, parser_u],
                                         help="Set file info")
-    parser_setf.add_argument('-n', "--file-name", help=h_empty("name"))
-    parser_setf.add_argument('-d', "--file-desc", help=h_empty("description"))
+    parser_setf.add_argument('-n', "--file-name", dest="name",
+                             help=h_empty("name"))
+    parser_setf.add_argument('-d', "--file-desc", dest="description",
+                             help=h_empty("description"))
     parser_setf.add_argument('-pb', "--public", choices=['0', '1'],
                              default='0', help=h_empty("public status, 0 -"
                              " private, 1 - public"))
@@ -93,15 +99,63 @@ def arg_parser():
     parser_mvf.add_argument('-f', "--folder-id",
                             help=("Use if you want to change the folder."
                             " Specify folder_id or 0 for root directory."))
+    # Create the parser for the "get-folder-info" command
+    parser_getfo = subparsers.add_parser("folder-get-info",
+                                        parents=[parser_fo, parser_u],
+                                        help="Return folder info")
+    # Create the parser for the "set-folder-info" command
+    parser_setfo = subparsers.add_parser("folder-set-info",
+                                        parents=[parser_fo, parser_u],
+                                        help="Set folder info")
+    parser_setfo.add_argument('-n', "--folder-name", dest="name",
+                              help=h_empty("name"))
+    parser_setfo.add_argument('-d', "--folder-desc", dest="description",
+                             help=h_empty("description"))
+    parser_setfo.add_argument('-f', "--parent-folder-id",
+                             help=("Use to change the parent folder"))
+    # Create the parser for the "folder-delete" command
+    parser_delfo = subparsers.add_parser("folder-delete",
+                                        parents=[parser_fo, parser_u],
+                                        help="Delete folder")
+    # Create the parser for the "folder-move" command
+    parser_mvfo = subparsers.add_parser("folder-move",
+                                       parents=[parser_fo, parser_u],
+                                       help="Move folder")
+    parser_mvfo.add_argument('-f', "--parent-folder-id",
+                            help=("Use if you want to change the folder."
+                            " Specify folder_id or 0 for root directory."))
+    # Create the parser for the "folder-create" command
+    parser_cfo = subparsers.add_parser("folder-create",
+                                       parents=[parser_u],
+                                       help="Create folder")
+    parser_cfo.add_argument("name", metavar="folder-name",
+                            help="Folder name")
+    parser_cfo.add_argument('-d', "--folder-desc", dest="description",
+                             help="Folder description")
+    parser_cfo.add_argument('-f', "--parent-folder-id",
+                             help="Create folder inside this one")
+    # Create the parser for the "folder-content" command
+    parser_confo = subparsers.add_parser("folder-content",
+                                         parents=[parser_fo, parser_u],
+                                         help="Get folder content")
+    parser_confo.add_argument("--user", help=("Username of the person you"
+                                              "want to retrieve the folder"
+                                              "content for"))
+    parser_confo.add_argument("--user-id", help=("User id of the person you"
+                                                 "want to retrieve the folder"
+                                                 "content for"))
+    # TODO: merge some of the duplicate items into a parent parser
+    # TODO: help text needs more info
     # Parse the args and return them as a dict
     args = parser.parse_args()
     if args.action is None:
         parser.print_help()
+        exit(0)
     return vars(args)
 
 def h_empty(s):
     """Substitute keyword and returns repetitive help message for arg parser"""
-    s = ("Use to change the file's %s. Choosing an empty value \"\" will"
+    s = ("Use to change the %s. Choosing an empty value \"\" will"
          " clear the data.") % s
     return s
 
@@ -111,8 +165,7 @@ def login(username, password):
     args = {'action': "user/auth", 'user': username, 'pass': password}
     url = gen_url(args)
     request = s.get(url)
-    content = request.content
-    resp = etree.XML(content)
+    resp = etree.XML(request.content)
     token = resp.xpath('//token/text()')[0]
     return token
 
@@ -121,15 +174,17 @@ def parse_info(xml):
     xml = etree.XML(xml)
     return xml.xpath("//results/descendant::*")
 
-def upload(args, token):
+def upload(args):
     """Handles file upload.
 
     Generates XID, builds request and calls the upload_file method. Also runs
     get_progress as a thread to print the progress from the server.
     """
-    xid = None
     xid = binascii.hexlify(os.urandom(8))
-    files_data, upload_data = gen_data(args, xid, token)
+    files_data = {'file': args.pop('my_file')}
+    args['file_description[]'] = args.pop('file_desc')
+    args['file_code[]'] = args.pop('file_code')
+    upload_data = args
     # Get and print the progress using a daemon thread
     t = threading.Thread(target=get_progress, args=(xid,))
     t.daemon = True
@@ -137,19 +192,10 @@ def upload(args, token):
     result = upload_file(files_data, upload_data, xid)
     return result
 
-def gen_data(args, xid, token):
-    """Constructs data needed for the HTTP POST request for uploads."""
-    files_data = {'file': args['my_file']}
-    upload_data = {'action': "uploadapi", 'token': token,
-                   'public': args['public'],
-                   'upload_folder': args['upload_folder'],
-                   'file_description[]': args['file_desc'],
-                   'file_code[]': args['file_code']}
-    return files_data, upload_data
-
 def upload_file(files_data, upload_data, xid):
     """Uploads file and returns parsed response."""
     # xid is optional, and can be used to track progress
+    # TODO: Actually make progress tracking optional
     url = 'http://api.d-h.st/upload'
     if xid is not None:
         url = '%s?X-Progress-ID=%s' % (url, xid)
@@ -177,34 +223,9 @@ def get_progress(xid):
         else:
             print progress.get('state')
 
-def get_file_info(file_code, token):
-    """Gets a file's info."""
-    args = {'action': "file/getinfo", 'token': token, 'file_code': file_code}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def set_file_info(args, token):
-    """Sets a file's info."""
-    args = {'action': "file/setinfo", 'token': token, 'file_code':
-            args['file-code'], 'name': args['file_name'], 'description':
-            args['file_desc'], 'public': args['public'], 'folder_id':
-            args['folder_id']}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def delete_file(file_code, token):
-    """Deletes file(s)."""
-    args = {'action': "file/delete", 'token': token, 'file_code': file_code}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def move_file(file_code, token, folder_id):
-    """Moves file(s)."""
-    args = {'action': "file/move", 'token': token, 'file_code': file_code,
-            'folder_id': folder_id}
+def api_do(args):
+    """Generates URL using the passed args, gets the data from it,
+    and returns the content of the response."""
     url = gen_url(args)
     r = s.get(url)
     return r.content
@@ -232,31 +253,34 @@ def signal_handler(signal, frame):
     exit(0)
 
 
+args = arg_parser()
 signal.signal(signal.SIGINT, signal_handler)
 s = session()
-args = arg_parser()
+methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
+           'file-set-info': "file/setinfo", 'file-delete': "file/delete",
+           'file-move': "file/move", 'folder-get-info': "folder/getinfo",
+           'folder-set-info': "folder/setinfo", 'folder-delete':
+           "folder/delete", 'folder-move': "folder/move", 'folder-create':
+           "folder/create", 'folder-content': "folder/content"}
 
 token = None
 if args['username'] is not None and args['password'] is not None:
     print "Logging in..."
-    token = login(args['username'], args['password'])
+    args['token'] = login(args['username'], args['password'])
+    del args['password']
+    del args['username']
 
-print "Starting...\n"
+
 result = None
-if args['action'] == "upload":
-    result = upload(args, token)
-elif args['action'] == "file-get-info":
-    result = get_file_info(args['file-code'], token)
-elif args['username'] is None or args['password'] is None:
-    print "You must specify your username and password for this action."
-elif args['action'] == "file-set-info":
-    result = set_file_info(args, token)
-elif args['action'] == "file-delete":
-    result = delete_file(args['file-code'], token)
-elif args['action'] == "file-move":
-    result = move_file(args['file-code'], token, args['folder_id'])
+if args['action'] in methods:
+    print "Starting...\n"
+    args['action'] = methods[args['action']]
+    if args['action'] == "uploadapi":
+        result = upload(args)
+    else:
+        result = api_do(args)
 else:
-    print args['action']
+    print "Action not recognized."
 
 if result is not None:
     for field in parse_info(result):
