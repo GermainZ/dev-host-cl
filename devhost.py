@@ -65,7 +65,8 @@ def arg_parser():
     parser_upload.add_argument('-pb', "--public", choices=['0', '1'],
                                default='0', help=("File is public or private,"
                                " 0 - private, 1 - public"))
-    parser_upload.add_argument('-f', "--upload-folder", default='0',
+    parser_upload.add_argument('-f', "--upload-folder", dest="uploadfolder",
+                               default='0',
                                help=("Folder id to upload file to. The root"
                                      " folder is chosen by default"))
     # Create the parser for the "get-file-info" command
@@ -76,8 +77,10 @@ def arg_parser():
     parser_setf = subparsers.add_parser("file-set-info",
                                         parents=[parser_c, parser_u],
                                         help="Set file info")
-    parser_setf.add_argument('-n', "--file-name", help=h_empty("name"))
-    parser_setf.add_argument('-d', "--file-desc", help=h_empty("description"))
+    parser_setf.add_argument('-n', "--file-name", dest="name",
+                             help=h_empty("name"))
+    parser_setf.add_argument('-d', "--file-desc", dest="description",
+                             help=h_empty("description"))
     parser_setf.add_argument('-pb', "--public", choices=['0', '1'],
                              default='0', help=h_empty("public status, 0 -"
                              " private, 1 - public"))
@@ -102,8 +105,9 @@ def arg_parser():
     parser_setfo = subparsers.add_parser("folder-set-info",
                                         parents=[parser_fo, parser_u],
                                         help="Set folder info")
-    parser_setfo.add_argument('-n', "--folder-name", help=h_empty("name"))
-    parser_setfo.add_argument('-d', "--folder-desc",
+    parser_setfo.add_argument('-n', "--folder-name", dest="name",
+                              help=h_empty("name"))
+    parser_setfo.add_argument('-d', "--folder-desc", dest="description",
                              help=h_empty("description"))
     parser_setfo.add_argument('-f', "--parent-folder-id",
                              help=("Use to change the parent folder"))
@@ -122,9 +126,9 @@ def arg_parser():
     parser_cfo = subparsers.add_parser("folder-create",
                                        parents=[parser_u],
                                        help="Create folder")
-    parser_cfo.add_argument("folder_name", metavar="folder-name",
+    parser_cfo.add_argument("name", metavar="folder-name",
                             help="Folder name")
-    parser_cfo.add_argument('-d', "--folder-desc",
+    parser_cfo.add_argument('-d', "--folder-desc", dest="description",
                              help="Folder description")
     parser_cfo.add_argument('-f', "--parent-folder-id",
                              help="Create folder inside this one")
@@ -133,10 +137,10 @@ def arg_parser():
                                          parents=[parser_fo, parser_u],
                                          help="Get folder content")
     parser_confo.add_argument("--user", help=("Username of the person you"
-                                              "want to retrive the folder"
+                                              "want to retrieve the folder"
                                               "content for"))
     parser_confo.add_argument("--user-id", help=("User id of the person you"
-                                                 "want to retrive the folder"
+                                                 "want to retrieve the folder"
                                                  "content for"))
     # TODO: merge some of the duplicate items into a parent parser
     # TODO: help text needs more info
@@ -168,15 +172,17 @@ def parse_info(xml):
     xml = etree.XML(xml)
     return xml.xpath("//results/descendant::*")
 
-def upload(args, token):
+def upload(args):
     """Handles file upload.
 
     Generates XID, builds request and calls the upload_file method. Also runs
     get_progress as a thread to print the progress from the server.
     """
-    xid = None
     xid = binascii.hexlify(os.urandom(8))
-    files_data, upload_data = gen_data(args, xid, token)
+    files_data = {'file': args.pop('my_file')}
+    args['file_description[]'] = args.pop('file_desc')
+    args['file_code[]'] = args.pop('file_code')
+    upload_data = args
     # Get and print the progress using a daemon thread
     t = threading.Thread(target=get_progress, args=(xid,))
     t.daemon = True
@@ -184,19 +190,10 @@ def upload(args, token):
     result = upload_file(files_data, upload_data, xid)
     return result
 
-def gen_data(args, xid, token):
-    """Constructs data needed for the HTTP POST request for uploads."""
-    files_data = {'file': args['my_file']}
-    upload_data = {'action': "uploadapi", 'token': token,
-                   'public': args['public'],
-                   'upload_folder': args['upload_folder'],
-                   'file_description[]': args['file_desc'],
-                   'file_code[]': args['file_code']}
-    return files_data, upload_data
-
 def upload_file(files_data, upload_data, xid):
     """Uploads file and returns parsed response."""
     # xid is optional, and can be used to track progress
+    # TODO: Actually make progress tracking optional
     url = 'http://api.d-h.st/upload'
     if xid is not None:
         url = '%s?X-Progress-ID=%s' % (url, xid)
@@ -222,84 +219,9 @@ def get_progress(xid):
         else:
             print(progress.get('state'))
 
-def get_file_info(file_code, token):
-    """Gets a file's info."""
-    args = {'action': "file/getinfo", 'token': token, 'file_code': file_code}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def set_file_info(args, token):
-    """Sets a file's info."""
-    args = {'action': "file/setinfo", 'token': token, 'file_code':
-            args['file_code'], 'name': args['file_name'], 'description':
-            args['file_desc'], 'public': args['public'], 'folder_id':
-            args['folder_id']}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def delete_file(file_code, token):
-    """Deletes file(s)."""
-    args = {'action': "file/delete", 'token': token, 'file_code': file_code}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def move_file(args, token):
-    """Moves file(s)."""
-    args = {'action': "file/move", 'token': token, file_code:
-            args['file_code'], 'folder_id': args['folder_id']}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def get_folder_info(folder_id, token):
-    """Gets folder info."""
-    args = {'action': "folder/getinfo", 'token': token, 'folder_id': folder_id}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def set_folder_info(args, token):
-    """Sets folder info."""
-    args = {'acion': "folder/setinfo", 'token': token, 'folder_id':
-            args['folder_id'], 'name': args['folder_name'], 'description':
-            args['folder_desc'], 'parent_folder_id': args['parent_folder_id']}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def delete_folder(folder_id, token):
-    """Deletes folder(s)."""
-    args = {'action': "folder/delete", 'token': token, 'folder_id': folder_id}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def move_folder(args, token):
-    """Moves folder(s)."""
-    args = {'action': "folder/move", 'token': token,
-            'parent_folder_id': args['parent_folder_id']}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def create_folder(args, token):
-    """Creates a new folder."""
-    args = {'action': "folder/create", 'token': token, 'name':
-            args['folder_name'], 'description': args['folder_desc'],
-            'parent_folder_id': args['parent_folder_id']}
-    url = gen_url(args)
-    r = s.get(url)
-    return r.content
-
-def folder_content(args, token):
-    """Returns info on a folder, including its immediate subfolders and
-    files."""
-    args = {'action': "folder/content", 'token': token, 'folder_id':
-            args['folder_id'], 'user': args['user'], 'user_id':
-            args['user_id']}
+def api_do(args):
+    """Generates URL using the passed args, gets the data from it,
+    and returns the content of the response."""
     url = gen_url(args)
     r = s.get(url)
     return r.content
@@ -327,43 +249,34 @@ def signal_handler(signal, frame):
     exit(0)
 
 
+args = arg_parser()
 signal.signal(signal.SIGINT, signal_handler)
 s = session()
-args = arg_parser()
+methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
+           'file-set-info': "file/setinfo", 'file-delete': "file/delete",
+           'file-move': "file/move", 'folder-get-info': "folder/getinfo",
+           'folder-set-info': "folder/setinfo", 'folder-delete':
+           "folder/delete", 'folder-move': "folder/move", 'folder-create':
+           "folder/create", 'folder-content': "folder/content"}
 
 token = None
 if args['username'] is not None and args['password'] is not None:
     print("Logging in...")
-    token = login(args['username'], args['password'])
+    args['token'] = login(args['username'], args['password'])
+    del args['password']
+    del args['username']
 
-print("Starting...\n")
+
 result = None
-if args['action'] == "upload":
-    result = upload(args, token)
-elif args['action'] == "file-get-info":
-    result = get_file_info(args['file_code'], token)
-elif args['username'] is None or args['password'] is None:
-    print("You must specify your username and password for this action.")
-elif args['action'] == "file-set-info":
-    result = set_file_info(args, token)
-elif args['action'] == "file-delete":
-    result = delete_file(args['file_code'], token)
-elif args['action'] == "file-move":
-    result = move_file(args, token)
-elif args['action'] == "folder-get-info":
-    result = get_folder_info(args['folder_id'], token)
-elif args['action'] == "folder-set-info":
-    result = set_folder_info(args, token)
-elif args['action'] == "folder-delete":
-    result = delete_folder(args['folder_id'], token)
-elif args['action'] == "folder-move":
-    result = move_folder(args, token)
-elif args['action'] == "folder-create":
-    result = create_folder(args, token)
-elif args['action'] == "folder-content":
-    result = folder_content(args, token)
+if args['action'] in methods:
+    print("Starting...\n")
+    args['action'] = methods[args['action']]
+    if args['action'] == "uploadapi":
+        result = upload(args)
+    else:
+        result = api_do(args)
 else:
-    print("Action %s not recognized" % args['action'])
+    print("Action not recognized.")
 
 if result is not None:
     for field in parse_info(result):
