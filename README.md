@@ -26,6 +26,12 @@ Usage
         * ````file-set-info```` - Set file info
         * ````file-delete```` - Delete file
         * ````file-move```` - Move file
+        * ````folder-get-info```` - Return folder info (public folders need no authentication)
+        * ````folder-set-info```` - Set folder info
+        * ````folder-delete```` - Delete folder
+        * ````folder-move```` - Move folder
+        * ````folder-create```` - Create new folder
+        * ````folder-content```` - Return folder content (public folders need no authentication)
     * For more help about an action: 
          ````devhost ACTION -h````
 * Example (to upload a file Anonymously):
@@ -36,11 +42,6 @@ Dependencies
 * python3 or python2 (http://python.org/)
 * python-requests or python2-requests (http://python-requests.org/)
 * python-lxml or python2-lxml (http://lxml.de/)
-
-Todo
-====
-* Add options for:
-    * Folder getinfo, setinfo, delete, move, create, content
 
 Notes
 =====
