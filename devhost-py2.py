@@ -182,8 +182,10 @@ def upload(args):
     """
     xid = binascii.hexlify(os.urandom(8))
     files_data = {'file': args.pop('my_file')}
-    args['file_description[]'] = args.pop('file_desc')
-    args['file_code[]'] = args.pop('file_code')
+    if 'file_desc' in args:
+        args['file_description[]'] = args.pop('file_desc')
+    if 'file_code' in args:
+        args['file_code[]'] = args.pop('file_code')
     upload_data = args
     # Get and print the progress using a daemon thread
     t = threading.Thread(target=get_progress, args=(xid,))
@@ -236,8 +238,6 @@ def gen_url(args):
     del args['action']
     first = True
     for key, value in args.items():
-        if value is None:
-            continue
         if first == True:
             url.append("?")
             first = False
@@ -252,8 +252,14 @@ def signal_handler(signal, frame):
     print "\nAborted by user"
     exit(0)
 
+def clean_dict(args):
+    """Remove None items from the dict and return it."""
+    result = {}
+    result.update((k, v) for k, v in args.items() if v is not None)
+    return result
 
 args = arg_parser()
+args = clean_dict(args)
 signal.signal(signal.SIGINT, signal_handler)
 s = session()
 methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
@@ -264,12 +270,14 @@ methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
            "folder/create", 'folder-content': "folder/content"}
 
 token = None
-if args['username'] is not None and args['password'] is not None:
+if 'username' in args and 'password' in args:
     print "Logging in..."
     args['token'] = login(args['username'], args['password'])
     del args['password']
     del args['username']
-
+elif 'username' in args or 'password' in args:
+    print "You must specify both username and password"
+    exit(0)
 
 result = None
 if args['action'] in methods:
