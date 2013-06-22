@@ -271,6 +271,9 @@ if 'username' in args and 'password' in args:
     args['token'] = login(args['username'], args['password'])
     del args['password']
     del args['username']
+elif 'username' in args or 'password' in args:
+    print("You must specify both username and password")
+    exit(0)
 
 result = None
 if args['action'] in methods:
