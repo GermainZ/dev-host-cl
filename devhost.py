@@ -2,7 +2,6 @@
 
 # dev-host-cl Copyright (c) 2013 by GermainZ <germanosz@gmail.om>
 # Requirements: python3
-#               python-lxml
 #               python-requests
 #
 # Dev-Host API documentation
@@ -23,14 +22,11 @@
 
 try:
     from requests import session
+    from requests.exceptions import *
 except ImportError:
     print("The requests module is required to use this script.")
     exit(1)
-try:
-    from lxml import etree
-except ImportError:
-    print("The lxml module is required to use this script")
-    exit(1)
+import xml.etree.ElementTree as ET
 import os
 import binascii
 import argparse
@@ -171,14 +167,14 @@ def login(username, password):
     args = {'action': "user/auth", 'user': username, 'pass': password}
     url = gen_url(args)
     request = s.get(url)
-    resp = etree.XML(request.content)
-    token = resp.xpath('//token/text()')[0]
+    resp = ET.XML(request.content)
+    token = resp.findall(".//token")[0].text
     return token
 
 def parse_info(xml):
     """Parses the response and returns it."""
-    xml = etree.XML(xml)
-    return xml.xpath("//results/descendant::*")
+    xml = ET.XML(xml)
+    return xml.findall(".//*")
 
 def upload(args):
     """Handles file upload.
@@ -212,12 +208,19 @@ def upload_file(files_data, upload_data, xid):
 
 def get_progress(xid):
     """Prints the upload's progress, using the xid."""
+    url = 'http://api.d-h.st/progress?X-Progress-ID=%s' % xid
     while True:
         # We're getting the progress from the website, so there's a slight
         # traffic overhead, which is why we're waiting a few seconds between
         # refreshes.
-        time.sleep(3)
-        request = s.get('http://api.d-h.st/progress?X-Progress-ID=%s' % xid)
+        time.sleep(2)
+        try:
+            request = s.get(url)
+        # It doesn't matter if we fail to get the progress, as long as
+        # the upload is still going on. Should that fail, this thread will
+        # terminate anyway.
+        except (ConnectionError, HTTPError, Timeout, TooManyRedirects):
+            continue
         resp = request.content.strip()[1:-2]
         progress = json.loads(resp.decode())
         if progress.get('state') == "uploading":
@@ -253,7 +256,7 @@ def gen_url(args):
 
 def signal_handler(signal, frame):
     """Handles SIGINT"""
-    print("\nAborted by user")
+    print("\nAborted by user.")
     exit(0)
 
 def clean_dict(args):
@@ -262,40 +265,50 @@ def clean_dict(args):
     result.update((k, v) for k, v in args.items() if v is not None)
     return result
 
+
+def main():
+    token = None
+    if 'username' in args and 'password' in args:
+        print("Logging in...")
+        args['token'] = login(args['username'], args['password'])
+        del args['password']
+        del args['username']
+    elif 'username' in args or 'password' in args:
+        print("You must specify both username and password.")
+        exit(0)
+    result = None
+    if args['action'] in methods:
+        print("Starting...\n")
+        args['action'] = methods[args['action']]
+        if args['action'] == "uploadapi":
+            result = upload(args)
+        else:
+            result = api_do(args)
+    else:
+        print("Action not recognized.")
+    if result is not None:
+        for field in parse_info(result):
+            print("%s: %s" % (field.tag.capitalize(), field.text))
+
+
 args = arg_parser()
 args = clean_dict(args)
 signal.signal(signal.SIGINT, signal_handler)
-s = session()
 methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
            'file-set-info': "file/setinfo", 'file-delete': "file/delete",
            'file-move': "file/move", 'folder-get-info': "folder/getinfo",
            'folder-set-info': "folder/setinfo", 'folder-delete':
            "folder/delete", 'folder-move': "folder/move", 'folder-create':
            "folder/create", 'folder-content': "folder/content"}
+s = session()
 
-token = None
-if 'username' in args and 'password' in args:
-    print("Logging in...")
-    args['token'] = login(args['username'], args['password'])
-    del args['password']
-    del args['username']
-elif 'username' in args or 'password' in args:
-    print("You must specify both username and password")
-    exit(0)
-
-result = None
-if args['action'] in methods:
-    print("Starting...\n")
-    args['action'] = methods[args['action']]
-    if args['action'] == "uploadapi":
-        result = upload(args)
-    else:
-        result = api_do(args)
-else:
-    print("Action not recognized.")
-
-if result is not None:
-    for field in parse_info(result):
-        print("%s: %s" % (field.tag.capitalize(), field.text))
-
-print()
+try:
+    main()
+except ConnectionError:
+    print("Error: Couldn't connect.")
+except HTTPError:
+    print("Error: Invalid HTTP response.")
+except Timeout:
+    print("Error: Our request timed out.")
+except TooManyRedirects:
+    print("Error: Too many redirects.")
