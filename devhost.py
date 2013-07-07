@@ -27,6 +27,7 @@ except ImportError:
     print("The requests module is required to use this script.")
     exit(1)
 import xml.etree.ElementTree as ET
+from getpass import getpass
 import os
 import binascii
 import argparse
@@ -41,8 +42,8 @@ def arg_parser():
     # Create the top level parser
     parser = argparse.ArgumentParser(description=("d-h.st (Dev-Host) command"
                                                   "line tool"))
-    parser.add_argument('-u', "--username", help="Username")
-    parser.add_argument('-p', "--password", help="Password")
+    parser.add_argument('-u', "--username", help="Username. If none is provided, uploads are done anonymously, and only public files are accessible.")
+    parser.add_argument('-p', "--password", help="Password. If only a username is provided, the user will be prompted for one without it appearing on the screen.")
     subparsers = parser.add_subparsers(metavar="ACTION", dest="action",
                                        help="Use %(prog)s ACTION -h for help")
     # Parent parsers
@@ -51,8 +52,8 @@ def arg_parser():
     # otherwise:
     # devhost.py upload file.txt -u myusername -p mypassword
     parser_u = argparse.ArgumentParser(add_help=False)
-    parser_u.add_argument('-u', "--username", help="Username")
-    parser_u.add_argument('-p', "--password", help="Password")
+    parser_u.add_argument('-u', "--username", help="Username. If none is provided, uploads are done anonymously, and only public files are accessible.")
+    parser_u.add_argument('-p', "--password", help="Password. If only a username is provided, the user will be prompted for one without it appearing on the screen.")
     # Other parent parsers
     parser_c = argparse.ArgumentParser(add_help=False)
     parser_c.add_argument("file_code", metavar="file-code", help="File Code")
@@ -268,13 +269,15 @@ def clean_dict(args):
 
 def main():
     token = None
-    if 'username' in args and 'password' in args:
+    if 'username' in args:
+        if 'password' not in args:
+            args['password'] = getpass("Password? ")
         print("Logging in...")
         args['token'] = login(args['username'], args['password'])
         del args['password']
         del args['username']
-    elif 'username' in args or 'password' in args:
-        print("You must specify both username and password.")
+    else:
+        print("You must at least specify your username.")
         exit(0)
     result = None
     if args['action'] in methods:
