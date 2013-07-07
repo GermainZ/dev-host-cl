@@ -21,8 +21,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from requests import session
-from lxml import etree
+try:
+    from requests import session
+except ImportError:
+    print("The requests module is required to use this script.")
+    exit(1)
+try:
+    from lxml import etree
+except ImportError:
+    print("The lxml module is required to use this script")
+    exit(1)
 import os
 import binascii
 import argparse
