@@ -163,13 +163,20 @@ def h_empty(s):
          " clear the data.") % s
     return s
 
+def pretty_print(result):
+    for field in parse_info(result):
+        print("%s: %s" % (field.tag.capitalize(), field.text))
 
 def login(username, password):
     """Login and return the token, which is used for identification."""
     args = {'action': "user/auth", 'user': username, 'pass': password}
     resp = api_do(args)
     resp = ET.XML(resp)
-    token = resp.findall(".//token")[0].text
+    try:
+       token = resp.findall(".//token")[0].text
+    except IndexError:
+        pretty_print(ET.tostring(resp))
+        exit(1)
     return token
 
 def parse_info(xml):
@@ -303,8 +310,7 @@ def main():
     else:
         print("Action not recognized.")
     if result is not None:
-        for field in parse_info(result):
-            print("%s: %s" % (field.tag.capitalize(), field.text))
+        pretty_print(result)
 
 if __name__ == "__main__":
     main()
