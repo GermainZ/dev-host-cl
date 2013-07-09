@@ -2,7 +2,6 @@
 
 # dev-host-cl Copyright (c) 2013 by GermainZ <germanosz@gmail.om>
 # Requirements: python2
-#               python2-lxml
 #               python2-requests
 #
 # Dev-Host API documentation
@@ -21,9 +20,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
 from __future__ import division
-from requests import session
-from lxml import etree
+import xml.etree.ElementTree as ET
+from getpass import getpass
 import os
 import binascii
 import argparse
@@ -33,14 +33,20 @@ import threading
 import signal
 import sys
 
+try:
+    from requests import get, post
+    import requests.exceptions
+except ImportError:
+    print "The requests module is required to use this script."
+    exit(1)
 
 def arg_parser():
     """Parses command line arguments, and returns a dict containing them."""
     # Create the top level parser
     parser = argparse.ArgumentParser(description=("d-h.st (Dev-Host) command"
                                                   "line tool"))
-    parser.add_argument('-u', "--username", help="Username")
-    parser.add_argument('-p', "--password", help="Password")
+    parser.add_argument('-u', "--username", help="Username. If none is provided, uploads are done anonymously, and only public files are accessible.")
+    parser.add_argument('-p', "--password", help="Password. If only a username is provided, the user will be prompted for one without it appearing on the screen.")
     subparsers = parser.add_subparsers(metavar="ACTION", dest="action",
                                        help="Use %(prog)s ACTION -h for help")
     # Parent parsers
@@ -49,8 +55,8 @@ def arg_parser():
     # otherwise:
     # devhost.py upload file.txt -u myusername -p mypassword
     parser_u = argparse.ArgumentParser(add_help=False)
-    parser_u.add_argument('-u', "--username", help="Username")
-    parser_u.add_argument('-p', "--password", help="Password")
+    parser_u.add_argument('-u', "--username", help="Username. If none is provided, uploads are done anonymously, and only public files are accessible.")
+    parser_u.add_argument('-p', "--password", help="Password. If only a username is provided, the user will be prompted for one without it appearing on the screen.")
     # Other parent parsers
     parser_c = argparse.ArgumentParser(add_help=False)
     parser_c.add_argument("file_code", metavar="file-code", help="File Code")
@@ -159,20 +165,26 @@ def h_empty(s):
          " clear the data.") % s
     return s
 
+def pretty_print(result):
+    for field in parse_info(result):
+        print "%s: %s" % (field.tag.capitalize(), field.text)
 
 def login(username, password):
     """Login and return the token, which is used for identification."""
     args = {'action': "user/auth", 'user': username, 'pass': password}
-    url = gen_url(args)
-    request = s.get(url)
-    resp = etree.XML(request.content)
-    token = resp.xpath('//token/text()')[0]
+    resp = api_do(args)
+    resp = ET.XML(resp)
+    try:
+       token = resp.findall(".//token")[0].text
+    except IndexError:
+        pretty_print(ET.tostring(resp))
+        exit(1)
     return token
 
 def parse_info(xml):
     """Parses the response and returns it."""
-    xml = etree.XML(xml)
-    return xml.xpath("//results/descendant::*")
+    xml = ET.XML(xml)
+    return xml.findall(".//*")
 
 def upload(args):
     """Handles file upload.
@@ -201,17 +213,24 @@ def upload_file(files_data, upload_data, xid):
     url = 'http://api.d-h.st/upload'
     if xid is not None:
         url = '%s?X-Progress-ID=%s' % (url, xid)
-    r = s.post(url, data=upload_data, files=files_data)
+    r = post(url, data=upload_data, files=files_data)
     return r.content
 
 def get_progress(xid):
     """Prints the upload's progress, using the xid."""
+    url = 'http://api.d-h.st/progress?X-Progress-ID=%s' % xid
     while True:
         # We're getting the progress from the website, so there's a slight
         # traffic overhead, which is why we're waiting a few seconds between
         # refreshes.
-        time.sleep(3)
-        request = s.get('http://api.d-h.st/progress?X-Progress-ID=%s' % xid)
+        time.sleep(2)
+        try:
+            request = get(url)
+        # It doesn't matter if we fail to get the progress, as long as
+        # the upload is still going on. Should that fail, this thread will
+        # terminate anyway.
+        except requests.exceptions:
+            continue
         resp = request.content.strip()[1:-2]
         progress = json.loads(resp.decode())
         if progress.get('state') == "uploading":
@@ -229,7 +248,11 @@ def api_do(args):
     """Generates URL using the passed args, gets the data from it,
     and returns the content of the response."""
     url = gen_url(args)
-    r = s.get(url)
+    try:
+        r = get(url)
+    except requests.exceptions, err:
+        print err
+        exit(1)
     return r.content
 
 def gen_url(args):
@@ -249,7 +272,7 @@ def gen_url(args):
 
 def signal_handler(signal, frame):
     """Handles SIGINT"""
-    print "\nAborted by user"
+    print "\nAborted by user."
     exit(0)
 
 def clean_dict(args):
@@ -258,40 +281,41 @@ def clean_dict(args):
     result.update((k, v) for k, v in args.items() if v is not None)
     return result
 
-args = arg_parser()
-args = clean_dict(args)
-signal.signal(signal.SIGINT, signal_handler)
-s = session()
-methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
-           'file-set-info': "file/setinfo", 'file-delete': "file/delete",
-           'file-move': "file/move", 'folder-get-info': "folder/getinfo",
-           'folder-set-info': "folder/setinfo", 'folder-delete':
-           "folder/delete", 'folder-move': "folder/move", 'folder-create':
-           "folder/create", 'folder-content': "folder/content"}
 
-token = None
-if 'username' in args and 'password' in args:
-    print "Logging in..."
-    args['token'] = login(args['username'], args['password'])
-    del args['password']
-    del args['username']
-elif 'username' in args or 'password' in args:
-    print "You must specify both username and password"
-    exit(0)
-
-result = None
-if args['action'] in methods:
-    print "Starting...\n"
-    args['action'] = methods[args['action']]
-    if args['action'] == "uploadapi":
-        result = upload(args)
+def main():
+    args = arg_parser()
+    args = clean_dict(args)
+    signal.signal(signal.SIGINT, signal_handler)
+    methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
+               'file-set-info': "file/setinfo", 'file-delete': "file/delete",
+               'file-move': "file/move", 'folder-get-info': "folder/getinfo",
+               'folder-set-info': "folder/setinfo", 'folder-delete':
+               "folder/delete", 'folder-move': "folder/move", 'folder-create':
+               "folder/create", 'folder-content': "folder/content"}
+    token = None
+    if 'username' in args:
+        if 'password' not in args:
+            args['password'] = getpass("Password? ")
+        print "Logging in..."
+        args['token'] = login(args['username'], args['password'])
+        del args['password']
+        del args['username']
     else:
-        result = api_do(args)
-else:
-    print "Action not recognized."
+        print "You must at least specify your username."
+        exit(0)
+    result = None
+    if args['action'] in methods:
+        print "Starting...\n"
+        args['action'] = methods[args['action']]
+        if args['action'] == "uploadapi":
+            result = upload(args)
+        else:
+            result = api_do(args)
+    else:
+        print "Action not recognized."
+    if result is not None:
+        pretty_print(result)
 
-if result is not None:
-    for field in parse_info(result):
-        print "%s: %s" % (field.tag.capitalize(), field.text)
+if __name__ == "__main__":
+    main()
 
-print
