@@ -1,8 +1,8 @@
 dev-host-cl
 ===========
 dev-host-cl is a python script that allows you to upload and manage files to
-http://d-h.st (Dev-Host) from a shell. It can be used anonymously or using
-your account credentials.
+http://d-h.st (Dev-Host) from a shell. It can be used anonymously or with
+your account's credentials.
 
 Download
 ========
@@ -18,6 +18,7 @@ Replace ````devhost.py```` by ````devhost-py2.py```` if you use python2.
 Usage
 =====
 * Syntax: ````devhost [-h] [-u USERNAME] [-p PASSWORD] ACTION ...````
+* If only a username is specified, the password will be prompted for without having it display on screen.
 * Actions:
     * ````upload```` - Upload file (anonymously if no credentials are specified)
     * For the actions below, you must be the owner of the file and use your
@@ -41,7 +42,6 @@ Dependencies
 ============
 * python3 or python2 (http://python.org/)
 * python-requests or python2-requests (http://python-requests.org/)
-* python-lxml or python2-lxml (http://lxml.de/)
 
 Notes
 =====
