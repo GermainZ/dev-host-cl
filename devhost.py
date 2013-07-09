@@ -20,12 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-try:
-    from requests import session
-    from requests.exceptions import *
-except ImportError:
-    print("The requests module is required to use this script.")
-    exit(1)
+
 import xml.etree.ElementTree as ET
 from getpass import getpass
 import os
@@ -36,6 +31,12 @@ import json
 import threading
 import signal
 
+try:
+    from requests import get, post
+    import requests.exceptions
+except ImportError:
+    print("The requests module is required to use this script.")
+    exit(1)
 
 def arg_parser():
     """Parses command line arguments, and returns a dict containing them."""
@@ -166,9 +167,8 @@ def h_empty(s):
 def login(username, password):
     """Login and return the token, which is used for identification."""
     args = {'action': "user/auth", 'user': username, 'pass': password}
-    url = gen_url(args)
-    request = s.get(url)
-    resp = ET.XML(request.content)
+    resp = api_do(args)
+    resp = ET.XML(resp)
     token = resp.findall(".//token")[0].text
     return token
 
@@ -204,7 +204,7 @@ def upload_file(files_data, upload_data, xid):
     url = 'http://api.d-h.st/upload'
     if xid is not None:
         url = '%s?X-Progress-ID=%s' % (url, xid)
-    r = s.post(url, data=upload_data, files=files_data)
+    r = post(url, data=upload_data, files=files_data)
     return r.content
 
 def get_progress(xid):
@@ -216,11 +216,11 @@ def get_progress(xid):
         # refreshes.
         time.sleep(2)
         try:
-            request = s.get(url)
+            request = get(url)
         # It doesn't matter if we fail to get the progress, as long as
         # the upload is still going on. Should that fail, this thread will
         # terminate anyway.
-        except (ConnectionError, HTTPError, Timeout, TooManyRedirects):
+        except requests.exceptions:
             continue
         resp = request.content.strip()[1:-2]
         progress = json.loads(resp.decode())
@@ -237,7 +237,11 @@ def api_do(args):
     """Generates URL using the passed args, gets the data from it,
     and returns the content of the response."""
     url = gen_url(args)
-    r = s.get(url)
+    try:
+        r = get(url)
+    except requests.exceptions as err:
+        print(err)
+        exit(1)
     return r.content
 
 def gen_url(args):
@@ -268,6 +272,15 @@ def clean_dict(args):
 
 
 def main():
+    args = arg_parser()
+    args = clean_dict(args)
+    signal.signal(signal.SIGINT, signal_handler)
+    methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
+               'file-set-info': "file/setinfo", 'file-delete': "file/delete",
+               'file-move': "file/move", 'folder-get-info': "folder/getinfo",
+               'folder-set-info': "folder/setinfo", 'folder-delete':
+               "folder/delete", 'folder-move': "folder/move", 'folder-create':
+               "folder/create", 'folder-content': "folder/content"}
     token = None
     if 'username' in args:
         if 'password' not in args:
@@ -293,25 +306,6 @@ def main():
         for field in parse_info(result):
             print("%s: %s" % (field.tag.capitalize(), field.text))
 
-
-args = arg_parser()
-args = clean_dict(args)
-signal.signal(signal.SIGINT, signal_handler)
-methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
-           'file-set-info': "file/setinfo", 'file-delete': "file/delete",
-           'file-move': "file/move", 'folder-get-info': "folder/getinfo",
-           'folder-set-info': "folder/setinfo", 'folder-delete':
-           "folder/delete", 'folder-move': "folder/move", 'folder-create':
-           "folder/create", 'folder-content': "folder/content"}
-s = session()
-
-try:
+if __name__ == "__main__":
     main()
-except ConnectionError:
-    print("Error: Couldn't connect.")
-except HTTPError:
-    print("Error: Invalid HTTP response.")
-except Timeout:
-    print("Error: Our request timed out.")
-except TooManyRedirects:
-    print("Error: Too many redirects.")
+
