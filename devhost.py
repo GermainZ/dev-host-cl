@@ -39,12 +39,18 @@ except ImportError:
     exit(1)
 
 def arg_parser():
-    """Parses command line arguments, and returns a dict containing them."""
+    """Parse command line arguments, and return a dict containing them."""
     # Create the top level parser
     parser = argparse.ArgumentParser(description=("d-h.st (Dev-Host) command"
                                                   "line tool"))
-    parser.add_argument('-u', "--username", help="Username. If none is provided, uploads are done anonymously, and only public files are accessible.")
-    parser.add_argument('-p', "--password", help="Password. If only a username is provided, the user will be prompted for one without it appearing on the screen.")
+    parser.add_argument('-u', "--username",
+                        help=("Username. If none is provided, uploads are"
+                             " done anonymously, and only public files are"
+                             " accessible"))
+    parser.add_argument('-p', "--password",
+                        help=("Password. If only a username is provided, the"
+                             " user will be prompted for one without it"
+                             " appearing on the screen"))
     subparsers = parser.add_subparsers(metavar="ACTION", dest="action",
                                        help="Use %(prog)s ACTION -h for help")
     # Parent parsers
@@ -53,13 +59,23 @@ def arg_parser():
     # otherwise:
     # devhost.py upload file.txt -u myusername -p mypassword
     parser_u = argparse.ArgumentParser(add_help=False)
-    parser_u.add_argument('-u', "--username", help="Username. If none is provided, uploads are done anonymously, and only public files are accessible.")
-    parser_u.add_argument('-p', "--password", help="Password. If only a username is provided, the user will be prompted for one without it appearing on the screen.")
+    parser_u.add_argument('-u', "--username",
+                          help=("Username. If none is provided, uploads are"
+                                " done anonymously, and only public files are"
+                                " accessible"))
+    parser_u.add_argument('-p', "--password",
+                          help=("Password. If only a username is provided, the"
+                                " user will be prompted for one without it"
+                                " appearing on the screen"))
     # Other parent parsers
     parser_c = argparse.ArgumentParser(add_help=False)
-    parser_c.add_argument("file_code", metavar="file-code", help="File Code")
+    parser_c.add_argument("file_code", metavar="file-code",
+                          help=("File code of an existing file. Multiple file"
+                                " code may be specified for certain commands"
+                                " (separated by commas, without spaces)"))
     parser_fo = argparse.ArgumentParser(add_help=False)
-    parser_fo.add_argument("folder_id", metavar="folder-id", help="Folder ID")
+    parser_fo.add_argument("folder_id", metavar="folder-id",
+                           help="ID of an existing folder")
     # Create the parser for the "upload" command
     parser_upload = subparsers.add_parser("upload", parents=[parser_u],
                                           help="Upload file")
@@ -90,8 +106,8 @@ def arg_parser():
     parser_setf.add_argument('-pb', "--public", choices=['0', '1'],
                              default='0', help=h_empty("public status, 0 -"
                              " private, 1 - public"))
-    parser_setf.add_argument('-f', "--folder-id", help=("Use to change the"
-                                                        " file's folder"))
+    parser_setf.add_argument('-f', "--folder-id",
+                             help="Use to change the file's folder")
     # Create the parser for the "file-delete" command
     parser_delf = subparsers.add_parser("file-delete",
                                         parents=[parser_c, parser_u],
@@ -102,7 +118,7 @@ def arg_parser():
                                        help="Move file")
     parser_mvf.add_argument('-f', "--folder-id",
                             help=("Use if you want to change the folder."
-                            " Specify folder_id or 0 for root directory."))
+                            " Specify folder_id or 0 for root directory"))
     # Create the parser for the "get-folder-info" command
     parser_getfo = subparsers.add_parser("folder-get-info",
                                         parents=[parser_fo, parser_u],
@@ -116,7 +132,8 @@ def arg_parser():
     parser_setfo.add_argument('-d', "--folder-desc", dest="description",
                              help=h_empty("description"))
     parser_setfo.add_argument('-f', "--parent-folder-id",
-                             help=("Use to change the parent folder"))
+                             help=("Use to change the parent folder. Specify"
+                                   "the folder ID or 0 for root directory"))
     # Create the parser for the "folder-delete" command
     parser_delfo = subparsers.add_parser("folder-delete",
                                         parents=[parser_fo, parser_u],
@@ -127,7 +144,7 @@ def arg_parser():
                                        help="Move folder")
     parser_mvfo.add_argument('-f', "--parent-folder-id",
                             help=("Use if you want to change the folder."
-                            " Specify folder_id or 0 for root directory."))
+                            " Specify the folder ID or 0 for root directory"))
     # Create the parser for the "folder-create" command
     parser_cfo = subparsers.add_parser("folder-create",
                                        parents=[parser_u],
@@ -137,17 +154,17 @@ def arg_parser():
     parser_cfo.add_argument('-d', "--folder-desc", dest="description",
                              help="Folder description")
     parser_cfo.add_argument('-f', "--parent-folder-id",
-                             help="Create folder inside this one")
+                             help="Create the folder inside this one")
     # Create the parser for the "folder-content" command
     parser_confo = subparsers.add_parser("folder-content",
                                          parents=[parser_fo, parser_u],
                                          help="Get folder content")
-    parser_confo.add_argument("--user", help=("Username of the person you"
-                                              "want to retrieve the folder"
-                                              "content for"))
-    parser_confo.add_argument("--user-id", help=("User id of the person you"
-                                                 "want to retrieve the folder"
-                                                 "content for"))
+    parser_confo.add_argument("--user",
+                              help=("Username of the person you want to"
+                                    " retrieve the folder's content for"))
+    parser_confo.add_argument("--user-id",
+                              help=("User ID of the person you want to"
+                                    " retrieve the folder content for"))
     # TODO: merge some of the duplicate items into a parent parser
     # TODO: help text needs more info
     # Parse the args and return them as a dict
@@ -158,17 +175,22 @@ def arg_parser():
     return vars(args)
 
 def h_empty(s):
-    """Substitute keyword and returns repetitive help message for arg parser"""
+    """Substitute keyword and return repetitive help message for arg parser"""
     s = ("Use to change the %s. Choosing an empty value \"\" will"
          " clear the data.") % s
     return s
 
 def pretty_print(result):
+    """Print XML object line by line, capitalizing the tag"""
     for field in parse_info(result):
         print("%s: %s" % (field.tag.capitalize(), field.text))
 
 def login(username, password):
-    """Login and return the token, which is used for identification."""
+    """Login and return the token, which is used for identification.
+
+    The token lasts for one hour.
+
+    """
     args = {'action': "user/auth", 'user': username, 'pass': password}
     resp = api_do(args)
     resp = ET.XML(resp)
@@ -180,15 +202,16 @@ def login(username, password):
     return token
 
 def parse_info(xml):
-    """Parses the response and returns it."""
+    """Parse XML and return its elements as a list"""
     xml = ET.XML(xml)
     return xml.findall(".//*")
 
 def upload(args):
-    """Handles file upload.
+    """Handle file upload
 
-    Generates XID, builds request and calls the upload_file method. Also runs
-    get_progress as a thread to print the progress from the server.
+    Generate XID, build request and call the upload_file method.
+    Also run get_progress as a thread to print the progress from the server.
+
     """
     xid = binascii.hexlify(os.urandom(8))
     files_data = {'file': args.pop('my_file')}
@@ -205,9 +228,9 @@ def upload(args):
     return result
 
 def upload_file(files_data, upload_data, xid):
-    """Uploads file and returns parsed response."""
+    """Upload file and return the parsed response"""
     # xid is optional, and can be used to track progress
-    # TODO: Actually make progress tracking optional
+    # TODO: Actually make progress tracking optional?
     url = 'http://api.d-h.st/upload'
     if xid is not None:
         url = '%s?X-Progress-ID=%s' % (url, xid)
@@ -215,7 +238,11 @@ def upload_file(files_data, upload_data, xid):
     return r.content
 
 def get_progress(xid):
-    """Prints the upload's progress, using the xid."""
+    """Prints the upload's progress, using the xid
+
+    This should be run in a separate thread.
+
+    """
     url = 'http://api.d-h.st/progress?X-Progress-ID=%s' % xid
     while True:
         # We're getting the progress from the website, so there's a slight
@@ -241,8 +268,12 @@ def get_progress(xid):
             print(progress.get('state'))
 
 def api_do(args):
-    """Generates URL using the passed args, gets the data from it,
-    and returns the content of the response."""
+    """Generates a URL using the passed args, gets the data from it,
+    and returns the content of the response
+
+    Refer to the gen_url docstring for more info.
+
+    """
     url = gen_url(args)
     try:
         r = get(url)
@@ -252,7 +283,20 @@ def api_do(args):
     return r.content
 
 def gen_url(args):
-    """Generates a URL using the keys/values of args, and returns it."""
+    """Generate a URL using the keys/values of args, and return it
+
+    args is a dict that has the following items:
+    'action': one of "file/getinfo", "file/setinfo", "file/delete",
+              "file/move", "folder/getinfo", "folder/setinfo", "folder/delete",
+              "folder/move", "folder/create", "folder/content"
+    'parameter': parameter value
+
+    For example, to delete a file:
+      args = {'action': "file/delete", 'token': token, 'file_code': "ygH"}
+
+    Refer to the Dev-Host API for more information.
+
+    """
     url = ["http://d-h.st/api/%s" % args['action']]
     del args['action']
     first = True
@@ -267,12 +311,12 @@ def gen_url(args):
     return url
 
 def signal_handler(signal, frame):
-    """Handles SIGINT"""
+    """Handle SIGINT"""
     print("\nAborted by user.")
     exit(0)
 
 def clean_dict(args):
-    """Remove None items from the dict and return it."""
+    """Remove None items from the dict and return it"""
     result = {}
     result.update((k, v) for k, v in args.items() if v is not None)
     return result
