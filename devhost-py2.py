@@ -168,7 +168,6 @@ def arg_parser():
                               help=("User ID of the person you want to"
                                     " retrieve the folder content for"))
     # TODO: merge some of the duplicate items into a parent parser
-    # TODO: help text needs more info
     # Parse the args and return them as a dict
     args = parser.parse_args()
     if args.action is None:
@@ -229,10 +228,9 @@ def upload(args):
     result = upload_file(files_data, upload_data, xid)
     return result
 
-def upload_file(files_data, upload_data, xid):
+def upload_file(files_data, upload_data, xid=None):
     """Upload file and return the parsed response"""
     # xid is optional, and can be used to track progress
-    # TODO: Actually make progress tracking optional?
     url = 'http://api.d-h.st/upload'
     if xid is not None:
         url = '%s?X-Progress-ID=%s' % (url, xid)
