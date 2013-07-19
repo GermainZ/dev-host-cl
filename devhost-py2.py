@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 # dev-host-cl Copyright (c) 2013 by GermainZ <germanosz@gmail.om>
-# Requirements: python3
-#               python-requests
+# Requirements: python2
+#               python2-requests
 #
 # Dev-Host API documentation
 # http://d-h.st/api
@@ -196,7 +196,7 @@ def login(username, password):
     resp = api_do(args)
     resp = ET.XML(resp)
     try:
-       token = resp.findall(".//token")[0].text
+        token = resp.findall(".//token")[0].text
     except IndexError:
         pretty_print(ET.tostring(resp))
         exit(1)

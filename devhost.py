@@ -194,7 +194,7 @@ def login(username, password):
     resp = api_do(args)
     resp = ET.XML(resp)
     try:
-       token = resp.findall(".//token")[0].text
+        token = resp.findall(".//token")[0].text
     except IndexError:
         pretty_print(ET.tostring(resp))
         exit(1)
