@@ -338,9 +338,8 @@ def main():
         args['token'] = login(args['username'], args['password'])
         del args['password']
         del args['username']
-    else:
-        print("You must at least specify your username.")
-        exit(0)
+    elif 'password' in args:
+        del args['password']
     result = None
     if args['action'] in methods:
         print("Starting...\n")
