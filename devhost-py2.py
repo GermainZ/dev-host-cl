@@ -248,13 +248,17 @@ def get_progress(xid):
         # We're getting the progress from the website, so there's a slight
         # traffic overhead, which is why we're waiting a few seconds between
         # refreshes.
-        time.sleep(2)
+        time.sleep(5)
         try:
             request = get(url)
         # It doesn't matter if we fail to get the progress, as long as
         # the upload is still going on. Should that fail, this thread will
         # terminate anyway.
         except requests.exceptions:
+            continue
+        except Exception, e:
+            print("An error has occured: %s" % repr(e))
+            print("Continuing...")
             continue
         resp = request.content.strip()[1:-2]
         progress = json.loads(resp.decode())
