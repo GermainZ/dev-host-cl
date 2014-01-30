@@ -212,7 +212,7 @@ def upload(args):
     Also run get_progress as a thread to print the progress from the server.
 
     """
-    xid = binascii.hexlify(os.urandom(8))
+    xid = binascii.hexlify(os.urandom(8)).decode()
     files_data = {'file': args.pop('my_file')}
     if 'file_desc' in args:
         args['file_description[]'] = args.pop('file_desc')
@@ -242,6 +242,11 @@ def get_progress(xid):
 
     """
     url = 'http://api.d-h.st/progress?X-Progress-ID=%s' % xid
+    # Wait a bit more before getting the progress for the first time. This is
+    # to (hopefully) avoid the "Max retries exceeded" error, which seems to
+    # happen when we request the progress too many times while the the upload
+    # is still starting.
+    time.sleep(5)
     while True:
         # We're getting the progress from the website, so there's a slight
         # traffic overhead, which is why we're waiting a few seconds between

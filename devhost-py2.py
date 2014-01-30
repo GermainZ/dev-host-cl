@@ -244,6 +244,11 @@ def get_progress(xid):
 
     """
     url = 'http://api.d-h.st/progress?X-Progress-ID=%s' % xid
+    # Wait a bit more before getting the progress for the first time. This is
+    # to (hopefully) avoid the "Max retries exceeded" error, which seems to
+    # happen when we request the progress too many times while the the upload
+    # is still starting.
+    time.sleep(5)
     while True:
         # We're getting the progress from the website, so there's a slight
         # traffic overhead, which is why we're waiting a few seconds between
