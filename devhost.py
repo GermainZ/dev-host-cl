@@ -181,8 +181,12 @@ def h_empty(s):
 
 def pretty_print(result):
     """Print XML object line by line, capitalizing the tag"""
-    for field in parse_info(result):
-        print("%s: %s" % (field.tag.capitalize(), field.text))
+    try:
+        for field in parse_info(result):
+            print("%s: %s" % (field.tag.capitalize(), field.text))
+    except ET.ParseError:
+        print("Something went wrong. Here's the raw result we got back:")
+        print(result)
 
 def login(username, password):
     """Login and return the token, which is used for identification.
