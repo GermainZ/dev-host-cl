@@ -177,15 +177,15 @@ def arg_parser():
 
 def h_empty(s):
     """Substitute keyword and return repetitive help message for arg parser"""
-    s = ("Use to change the %s. Choosing an empty value \"\" will"
-         " clear the data.") % s
+    s = ("Use to change the {0}. Choosing an empty value \"\" will"
+         " clear the data.").format(s)
     return s
 
 def pretty_print(result):
     """Print XML object line by line, capitalizing the tag"""
     try:
         for field in parse_info(result):
-            print("%s: %s" % (field.tag.capitalize(), field.text))
+            print("{0}: {1}".format(field.tag.capitalize(), field.text))
     except ET.ParseError:
         print("Something went wrong. Here's the raw result we got back:")
         print(result)
@@ -238,7 +238,7 @@ def upload_file(files_data, upload_data, xid=None):
     # xid is optional, and can be used to track progress
     url = 'http://api.d-h.st/upload'
     if xid is not None:
-        url = '%s?X-Progress-ID=%s' % (url, xid)
+        url = '{0}?X-Progress-ID={1}'.format(url, xid)
     r = post(url, data=upload_data, files=files_data)
     return r.content
 
@@ -248,7 +248,7 @@ def get_progress(xid):
     This should be run in a separate thread.
 
     """
-    url = 'http://api.d-h.st/progress?X-Progress-ID=%s' % xid
+    url = 'http://api.d-h.st/progress?X-Progress-ID={0}'.format(xid)
     # Wait a bit more before getting the progress for the first time. This is
     # to (hopefully) avoid the "Max retries exceeded" error, which seems to
     # happen when we request the progress too many times while the the upload
@@ -267,7 +267,7 @@ def get_progress(xid):
         except requests.exceptions:
             continue
         except Exception, e:
-            print("An error has occured: %s" % repr(e))
+            print("An error has occured: {0}".format(repr(e)))
             print("Continuing...")
             continue
         resp = request.content.strip()[1:-2]
@@ -275,7 +275,7 @@ def get_progress(xid):
         if progress.get('state') == "uploading":
             percentage = progress.get('received') / progress.get('size') * 100
             percentage = '{n:.{d}f}'.format(n=percentage, d=2)
-            print("Progress: %s%%" % percentage)
+            print("Progress: {0}%".format(percentage))
             sys.stdout.write('\r')
             sys.stdout.flush()
         elif progress.get('state') == "starting":
@@ -313,7 +313,7 @@ def gen_url(args):
     Refer to the Dev-Host API for more information.
 
     """
-    url = ["http://d-h.st/api/%s" % args['action']]
+    url = ["http://d-h.st/api/{0}".format(args['action'])]
     del args['action']
     first = True
     for key, value in args.items():
@@ -322,7 +322,7 @@ def gen_url(args):
             first = False
         else:
             url.append("&")
-        url.append("%s=%s" % (key, value))
+        url.append("{0}={1}".format(key, value))
     url = ''.join(url)
     return url
 
