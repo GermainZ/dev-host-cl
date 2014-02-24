@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # dev-host-cl Copyright (c) 2013 by GermainZ <germanosz@gmail.om>
-# Requirements: python3
-#               python-requests
+# Cross Python Version Copyright (c) 2014 by Cybojenix <anthonydking@slimroms.net>
+# Requirements: python 2/3
+#               python-2requests or python-requests
 #
 # Dev-Host API documentation
 # http://d-h.st/api
@@ -23,6 +24,7 @@
 
 import xml.etree.ElementTree as ET
 from getpass import getpass
+from sys import version_info
 import os
 import binascii
 import argparse
@@ -216,7 +218,9 @@ def upload(args):
     Also run get_progress as a thread to print the progress from the server.
 
     """
-    xid = binascii.hexlify(os.urandom(8)).decode()
+    xid = binascii.hexlify(os.urandom(8))
+    if version_info >= (3, 0):
+        xid = xid.decode()
     files_data = {'file': args.pop('my_file')}
     if 'file_desc' in args:
         args['file_description[]'] = args.pop('file_desc')
@@ -263,7 +267,8 @@ def get_progress(xid):
         # terminate anyway.
         except requests.exceptions:
             continue
-        except Exception as e:
+        except Exception:
+            e = sys.exc_info()[1]
             print("An error has occured: {0}".format(repr(e)))
             print("Continuing...")
             continue
@@ -288,8 +293,8 @@ def api_do(args):
     url = gen_url(args)
     try:
         r = get(url)
-    except requests.exceptions as err:
-        print(err)
+    except requests.exceptions:
+        print(sys.exc_info()[1])
         exit(1)
     return r.content
 
