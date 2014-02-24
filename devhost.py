@@ -2,8 +2,8 @@
 
 # dev-host-cl Copyright (c) 2013 by GermainZ <germanosz@gmail.om>
 # Cross Python Version Copyright (c) 2014 by Cybojenix <anthonydking@slimroms.net>
-# Requirements: python 2/3
-#               python-2requests or python-requests
+# Requirements: python 2.6 - 3.x
+#               python-requests
 #
 # Dev-Host API documentation
 # http://d-h.st/api
