@@ -13,8 +13,6 @@ For example:
          $ cp dev-host-cl/devhost.py ~/bin/devhost
          $ chmod +x ~/bin/devhost
 
-Replace ````devhost.py```` by ````devhost-py2.py```` if you use python2.
-
 Usage
 =====
 * Syntax: ````devhost [-h] [-u USERNAME] [-p PASSWORD] ACTION ...````
@@ -49,6 +47,3 @@ Notes
   This means the whole file is loaded into your memory before being uploaded.
   I might look into other modules if I have the time, but it's not a priority
   at the moment.
-* The python2 version of the script is created using the excellent 3to2 script,
-  with only minor extra modifications from my part. You can find 3to2 here:
-  https://pypi.python.org/pypi/3to2
