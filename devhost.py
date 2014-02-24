@@ -1,7 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # dev-host-cl Copyright (c) 2013 by GermainZ <germanosz@gmail.om>
-# Requirements: python3
+# Cross Python Version Copyright (c) 2014 by Cybojenix <anthonydking@slimroms.net>
+# Requirements: python 2.6 - 3.x
 #               python-requests
 #
 # Dev-Host API documentation
@@ -20,9 +21,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
+from __future__ import division, print_function
 import xml.etree.ElementTree as ET
 from getpass import getpass
+from sys import version_info
 import os
 import binascii
 import argparse
@@ -175,15 +177,15 @@ def arg_parser():
 
 def h_empty(s):
     """Substitute keyword and return repetitive help message for arg parser"""
-    s = ("Use to change the %s. Choosing an empty value \"\" will"
-         " clear the data.") % s
+    s = ("Use to change the {0}. Choosing an empty value \"\" will"
+         " clear the data.").format(s)
     return s
 
 def pretty_print(result):
     """Print XML object line by line, capitalizing the tag"""
     try:
         for field in parse_info(result):
-            print("%s: %s" % (field.tag.capitalize(), field.text))
+            print("{0}: {1}".format(field.tag.capitalize(), field.text))
     except ET.ParseError:
         print("Something went wrong. Here's the raw result we got back:")
         print(result)
@@ -216,7 +218,9 @@ def upload(args):
     Also run get_progress as a thread to print the progress from the server.
 
     """
-    xid = binascii.hexlify(os.urandom(8)).decode()
+    xid = binascii.hexlify(os.urandom(8))
+    if version_info >= (3, 0):
+        xid = xid.decode()
     files_data = {'file': args.pop('my_file')}
     if 'file_desc' in args:
         args['file_description[]'] = args.pop('file_desc')
@@ -235,7 +239,7 @@ def upload_file(files_data, upload_data, xid=None):
     # xid is optional, and can be used to track progress
     url = 'http://api.d-h.st/upload'
     if xid is not None:
-        url = '%s?X-Progress-ID=%s' % (url, xid)
+        url = '{0}?X-Progress-ID={1}'.format(url, xid)
     r = post(url, data=upload_data, files=files_data)
     return r.content
 
@@ -245,7 +249,7 @@ def get_progress(xid):
     This should be run in a separate thread.
 
     """
-    url = 'http://api.d-h.st/progress?X-Progress-ID=%s' % xid
+    url = 'http://api.d-h.st/progress?X-Progress-ID={0}'.format(xid)
     # Wait a bit more before getting the progress for the first time. This is
     # to (hopefully) avoid the "Max retries exceeded" error, which seems to
     # happen when we request the progress too many times while the the upload
@@ -263,8 +267,9 @@ def get_progress(xid):
         # terminate anyway.
         except requests.exceptions:
             continue
-        except Exception as e:
-            print("An error has occured: %s" % repr(e))
+        except Exception:
+            e = sys.exc_info()[1]
+            print("An error has occured: {0}".format(repr(e)))
             print("Continuing...")
             continue
         resp = request.content.strip()[1:-2]
@@ -272,7 +277,7 @@ def get_progress(xid):
         if progress.get('state') == "uploading":
             percentage = progress.get('received') / progress.get('size') * 100
             percentage = '{n:.{d}f}'.format(n=percentage, d=2)
-            print("Progress: %s%%" % percentage, end='\r')
+            print("Progress: {0}%".format(percentage), end='\r')
         elif progress.get('state') == "starting":
             pass
         else:
@@ -288,8 +293,8 @@ def api_do(args):
     url = gen_url(args)
     try:
         r = get(url)
-    except requests.exceptions as err:
-        print(err)
+    except requests.exceptions:
+        print(sys.exc_info()[1])
         exit(1)
     return r.content
 
@@ -308,7 +313,7 @@ def gen_url(args):
     Refer to the Dev-Host API for more information.
 
     """
-    url = ["http://d-h.st/api/%s" % args['action']]
+    url = ["http://d-h.st/api/{0}".format(args['action'])]
     del args['action']
     first = True
     for key, value in args.items():
@@ -317,7 +322,7 @@ def gen_url(args):
             first = False
         else:
             url.append("&")
-        url.append("%s=%s" % (key, value))
+        url.append("{0}={1}".format(key, value))
     url = ''.join(url)
     return url
 
