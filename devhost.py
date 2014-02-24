@@ -21,7 +21,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
+from __future__ import division, print_function
 import xml.etree.ElementTree as ET
 from getpass import getpass
 from sys import version_info
