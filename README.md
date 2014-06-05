@@ -41,6 +41,24 @@ Dependencies
 * python3 or python2 (http://python.org/)
 * python-requests or python2-requests (http://python-requests.org/)
 
+Installing python-requests
+==========================
+If you have root, Use pip, easy_install or apt to install requests
+```shell
+pip install requests
+easy_install requests
+apt-get install python-requests
+```
+
+If you do not have root, then install requests locally
+```shell
+curl -L https://github.com/kennethreitz/requests/tarball/master | tar xz
+cd kennethreitz-requests*
+python setup.py install --user
+cd ..
+rm -rf master kennethreitz-requests*
+```
+
 Notes
 =====
 * It's not possible to have streaming uploads with the requests module and d-h.
