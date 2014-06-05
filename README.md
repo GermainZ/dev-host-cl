@@ -43,11 +43,13 @@ Dependencies
 
 Installing python-requests
 ==========================
-If you have root, Use pip, easy_install or apt to install requests
+If you have root, Use pip, easy_install or your package manager to install
+requests
 ```shell
 pip install requests
 easy_install requests
 apt-get install python-requests
+pacman -S python-requests
 ```
 
 If you do not have root, then install requests locally
