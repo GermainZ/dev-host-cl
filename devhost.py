@@ -24,7 +24,7 @@
 from __future__ import division, print_function
 import xml.etree.ElementTree as ET
 from getpass import getpass
-from sys import version_info
+from sys import version_info, exc_info
 import os
 import binascii
 import argparse
@@ -268,7 +268,7 @@ def get_progress(xid):
         except requests.exceptions:
             continue
         except Exception:
-            e = sys.exc_info()[1]
+            e = exc_info()[1]
             print("An error has occured: {0}".format(repr(e)))
             print("Continuing...")
             continue
@@ -294,7 +294,7 @@ def api_do(args):
     try:
         r = get(url)
     except requests.exceptions:
-        print(sys.exc_info()[1])
+        print(exc_info()[1])
         exit(1)
     return r.content
 
