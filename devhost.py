@@ -47,12 +47,12 @@ def arg_parser():
                                                   "line tool"))
     parser.add_argument('-u', "--username",
                         help=("Username. If none is provided, uploads are"
-                             " done anonymously, and only public files are"
-                             " accessible"))
+                              " done anonymously, and only public files are"
+                              " accessible"))
     parser.add_argument('-p', "--password",
                         help=("Password. If only a username is provided, the"
-                             " user will be prompted for one without it"
-                             " appearing on the screen"))
+                              " user will be prompted for one without it"
+                              " appearing on the screen"))
     subparsers = parser.add_subparsers(metavar="ACTION", dest="action",
                                        help="Use %(prog)s ACTION -h for help")
     # Parent parsers
@@ -84,19 +84,19 @@ def arg_parser():
     parser_upload.add_argument("my_file", type=argparse.FileType('rb'),
                                metavar="file", help="File to upload")
     parser_upload.add_argument('-d', "--file-desc", help="Description of file")
-    parser_upload.add_argument('-c', "--file-code", help=("File code of an"
-                               "existing file to update/replace"))
+    parser_upload.add_argument('-c', "--file-code",
+                               help=("File code of an existing file to update/"
+                                     "replace"))
     parser_upload.add_argument('-pb', "--public", choices=['0', '1'],
                                default='0', help=("File is public or private,"
-                               " 0 - private, 1 - public"))
+                                                  " 0 - private, 1 - public"))
     parser_upload.add_argument('-f', "--upload-folder", dest="uploadfolder",
                                default='0',
                                help=("Folder id to upload file to. The root"
                                      " folder is chosen by default"))
     # Create the parser for the "get-file-info" command
-    parser_getf = subparsers.add_parser("file-get-info",
-                                        parents=[parser_c, parser_u],
-                                        help="Return file info")
+    subparsers.add_parser("file-get-info", parents=[parser_c, parser_u],
+                          help="Return file info")
     # Create the parser for the "set-file-info" command
     parser_setf = subparsers.add_parser("file-set-info",
                                         parents=[parser_c, parser_u],
@@ -107,46 +107,44 @@ def arg_parser():
                              help=h_empty("description"))
     parser_setf.add_argument('-pb', "--public", choices=['0', '1'],
                              default='0', help=h_empty("public status, 0 -"
-                             " private, 1 - public"))
+                                                       " private, 1 - public"))
     parser_setf.add_argument('-f', "--folder-id",
                              help="Use to change the file's folder")
     # Create the parser for the "file-delete" command
-    parser_delf = subparsers.add_parser("file-delete",
-                                        parents=[parser_c, parser_u],
-                                        help="Delete file")
+    subparsers.add_parser("file-delete", parents=[parser_c, parser_u],
+                          help="Delete file")
     # Create the parser for the "file-move" command
     parser_mvf = subparsers.add_parser("file-move",
                                        parents=[parser_c, parser_u],
                                        help="Move file")
     parser_mvf.add_argument('-f', "--folder-id",
                             help=("Use if you want to change the folder."
-                            " Specify folder_id or 0 for root directory"))
+                                  " Specify folder_id or 0 for root directory"))
     # Create the parser for the "get-folder-info" command
-    parser_getfo = subparsers.add_parser("folder-get-info",
-                                        parents=[parser_fo, parser_u],
-                                        help="Return folder info")
+    subparsers.add_parser("folder-get-info", parents=[parser_fo, parser_u],
+                          help="Return folder info")
     # Create the parser for the "set-folder-info" command
     parser_setfo = subparsers.add_parser("folder-set-info",
-                                        parents=[parser_fo, parser_u],
-                                        help="Set folder info")
+                                         parents=[parser_fo, parser_u],
+                                         help="Set folder info")
     parser_setfo.add_argument('-n', "--folder-name", dest="name",
                               help=h_empty("name"))
     parser_setfo.add_argument('-d', "--folder-desc", dest="description",
-                             help=h_empty("description"))
+                              help=h_empty("description"))
     parser_setfo.add_argument('-f', "--parent-folder-id",
-                             help=("Use to change the parent folder. Specify"
-                                   "the folder ID or 0 for root directory"))
+                              help=("Use to change the parent folder. Specify"
+                                    " the folder ID or 0 for root directory"))
     # Create the parser for the "folder-delete" command
-    parser_delfo = subparsers.add_parser("folder-delete",
-                                        parents=[parser_fo, parser_u],
-                                        help="Delete folder")
+    subparsers.add_parser("folder-delete", parents=[parser_fo, parser_u],
+                          help="Delete folder")
     # Create the parser for the "folder-move" command
     parser_mvfo = subparsers.add_parser("folder-move",
-                                       parents=[parser_fo, parser_u],
-                                       help="Move folder")
+                                        parents=[parser_fo, parser_u],
+                                        help="Move folder")
     parser_mvfo.add_argument('-f', "--parent-folder-id",
-                            help=("Use if you want to change the folder."
-                            " Specify the folder ID or 0 for root directory"))
+                             help=("Use if you want to change the folder."
+                                   " Specify the folder ID or 0 for root"
+                                   " directory"))
     # Create the parser for the "folder-create" command
     parser_cfo = subparsers.add_parser("folder-create",
                                        parents=[parser_u],
@@ -154,9 +152,9 @@ def arg_parser():
     parser_cfo.add_argument("name", metavar="folder-name",
                             help="Folder name")
     parser_cfo.add_argument('-d', "--folder-desc", dest="description",
-                             help="Folder description")
+                            help="Folder description")
     parser_cfo.add_argument('-f', "--parent-folder-id",
-                             help="Create the folder inside this one")
+                            help="Create the folder inside this one")
     # Create the parser for the "folder-content" command
     parser_confo = subparsers.add_parser("folder-content",
                                          parents=[parser_fo, parser_u],
@@ -167,7 +165,6 @@ def arg_parser():
     parser_confo.add_argument("--user-id",
                               help=("User ID of the person you want to"
                                     " retrieve the folder content for"))
-    # TODO: merge some of the duplicate items into a parent parser
     # Parse the args and return them as a dict
     args = parser.parse_args()
     if args.action is None:
@@ -348,7 +345,6 @@ def main():
                'folder-set-info': "folder/setinfo", 'folder-delete':
                "folder/delete", 'folder-move': "folder/move", 'folder-create':
                "folder/create", 'folder-content': "folder/content"}
-    token = None
     if 'username' in args:
         if 'password' not in args:
             args['password'] = getpass("Password? ")
