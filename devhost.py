@@ -310,18 +310,10 @@ def gen_url(args):
     Refer to the Dev-Host API for more information.
 
     """
-    url = ["http://d-h.st/api/{0}".format(args['action'])]
+    url = "http://d-h.st/api/{0}".format(args['action'])
     del args['action']
-    first = True
-    for key, value in args.items():
-        if first == True:
-            url.append("?")
-            first = False
-        else:
-            url.append("&")
-        url.append("{0}={1}".format(key, value))
-    url = ''.join(url)
-    return url
+    params = "&".join("%s=%s" % i for i in args.items())
+    return "?".join((url, params))
 
 def signal_handler(signal, frame):
     """Handle SIGINT"""
