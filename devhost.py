@@ -24,7 +24,7 @@
 from __future__ import division, print_function
 import xml.etree.ElementTree as ET
 from getpass import getpass
-from sys import version_info, exc_info
+from sys import version_info, exc_info, stderr
 import os
 import binascii
 import argparse
@@ -53,6 +53,10 @@ def arg_parser():
                         help=("Password. If only a username is provided, the"
                               " user will be prompted for one without it"
                               " appearing on the screen"))
+    parser.add_argument(("--I-like-devhost-even-though-it-is-one-of-the-worst-"
+                         "services-around"),
+                        help="disable deprecation warnings and actions",
+                        action="store_true", dest="moron")
     subparsers = parser.add_subparsers(metavar="ACTION", dest="action",
                                        help="Use %(prog)s ACTION -h for help")
     # Parent parsers
@@ -330,6 +334,34 @@ def clean_dict(args):
 def main():
     args = arg_parser()
     args = clean_dict(args)
+
+    if not args.get('moron', False):
+        print("""
+dev-host-cl is now deprecated. This is due to changes in the Dev-Host service,
+including but not limited to:
+
+* An onslaught of ads.
+* Fake download buttons styled in the same manner as the actual download
+  buttons.
+* The site being marked as untrustworthy by most major browser vendors,
+  resulting in files not downloading.
+* The slow service provided to unregistered users and free users.
+* Dev-Host not responding to support requests when their API is broken or
+  behaves differently than their documentation (http://d-h.st/api),
+  which also seems unmaintained.
+
+In light of this, we will now warn the user when using this tool, and will
+delay the program executing by 10 seconds.
+
+To disable this, please use the
+`--I-like-devhost-even-though-it-is-one-of-the-worst-services-around` option.
+
+If you're interested in alternatives, please check https://ptpb.pw/ or
+https://pomf.se/ for smaller downloads (<60M and <50M respectively), or
+https://androidfilehost.com/
+            """, file=stderr)
+        time.sleep(10)
+
     signal.signal(signal.SIGINT, signal_handler)
     methods = {'upload': "uploadapi", 'file-get-info': "file/getinfo",
                'file-set-info': "file/setinfo", 'file-delete': "file/delete",

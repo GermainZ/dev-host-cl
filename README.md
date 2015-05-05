@@ -4,6 +4,30 @@ dev-host-cl is a python script that allows you to upload and manage files to
 http://d-h.st (Dev-Host) from a shell. It can be used anonymously or with
 your account's credentials.
 
+Warning
+=======
+dev-host-cl is now deprecated. This is due to changes in the Dev-Host service,
+including but not limited to:
+
+* An onslaught of ads.
+* Fake download buttons styled in the same manner as the actual download
+  buttons.
+* The site being marked as untrustworthy by most major browser vendors,
+  resulting in files not downloading.
+* The slow service provided to unregistered users and free users.
+* Dev-Host not responding to support requests when their API is broken or
+  behaves differently than their documentation,
+  [which also seems unmaintained](http://d-h.st/api).
+
+In light of this, we will now warn the user when using this tool, and will
+delay the program executing by 10 seconds.
+
+To disable this, please use the
+``--I-like-devhost-even-though-it-is-one-of-the-worst-services-around`` option.
+
+If you're interested in alternatives, please check https://ptpb.pw/ or
+https://pomf.se/ for smaller downloads (<60M and <50M respectively), or
+https://androidfilehost.com/
 Download
 ========
 You can download and place the script in ~/bin to use it directly.
